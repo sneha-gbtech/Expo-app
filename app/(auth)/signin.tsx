@@ -140,11 +140,13 @@ export default function SignIn() {
 
               {/* Forgot Password Link */}
               <View className="mb-8">
-                <TouchableOpacity activeOpacity={0.7}>
-                  <Text className="text-sm font-semibold text-accent">
-                    Forgot password?
-                  </Text>
-                </TouchableOpacity>
+                <Link href="/(auth)/forgot-password" asChild>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <Text className="text-sm font-semibold text-accent">
+                      Forgot password?
+                    </Text>
+                  </TouchableOpacity>
+                </Link>
               </View>
 
               {/* Sign In Button */}

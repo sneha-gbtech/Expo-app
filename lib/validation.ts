@@ -80,3 +80,30 @@ export const validateSignUp = (
 
     return errors;
 };
+
+// Validate email for forgot password
+export const validateEmail = (email: string): boolean => {
+    if (!email.trim()) {
+        return false;
+    }
+    return isValidEmail(email);
+};
+
+// Validate password for reset password
+export const validatePassword = (password: string): string | null => {
+    if (!password.trim()) {
+        return 'Password is required';
+    }
+    if (password.length < 8) {
+        return 'Password must be at least 8 characters';
+    }
+    // Check for uppercase and lowercase
+    if (!/[a-z]/.test(password) || !/[A-Z]/.test(password)) {
+        return 'Password must contain uppercase and lowercase letters';
+    }
+    // Check for number
+    if (!/\d/.test(password)) {
+        return 'Password must contain at least one number';
+    }
+    return null;
+};
