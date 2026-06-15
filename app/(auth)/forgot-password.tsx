@@ -1,6 +1,7 @@
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { validateEmail } from '@/lib/validation';
+import { useSignIn } from '@clerk/clerk-expo';
 import { Link, useRouter } from 'expo-router';
 import { styled } from 'nativewind';
 import React, { useState } from 'react';
@@ -25,6 +26,7 @@ interface ForgotPasswordFormState {
 }
 
 export default function ForgotPassword() {
+    const { signIn, isLoaded } = useSignIn();
     const router = useRouter();
 
     const [formState, setFormState] = useState<ForgotPasswordFormState>({
@@ -46,8 +48,10 @@ export default function ForgotPassword() {
     };
 
     const handleSendCode = async () => {
-        // Validate email
+        if (!isLoaded) return;
+
         const errors: Record<string, string> = {};
+
         if (!validateEmail(formState.email)) {
             errors.email = 'Please enter a valid email address';
         }
@@ -60,30 +64,43 @@ export default function ForgotPassword() {
             return;
         }
 
-        setFormState((prev) => ({ ...prev, isLoading: true, serverError: '' }));
+        setFormState((prev) => ({
+            ...prev,
+            isLoading: true,
+            serverError: '',
+        }));
 
         try {
-            // For demo purposes, we'll show a success message
-            // In a real app, you would call Clerk's API to send the reset code
-            setFormState((prev) => ({
-                ...prev,
-                successMessage: `Check your email at ${formState.email} for the reset code.`,
-                isLoading: false,
-            }));
+            await signIn.create({
+                strategy: 'reset_password_email_code',
+                identifier: formState.email,
+            });
+
             setCodeSent(true);
 
-            // Auto-navigate to reset password after 2 seconds
-            setTimeout(() => {
-                router.push({
-                    pathname: '/(auth)/reset-password',
-                    params: { email: formState.email }
-                });
-            }, 2000);
+            setFormState((prev) => ({
+                ...prev,
+                successMessage: `Check your email at ${formState.email} for the verification code.`,
+            }));
+
+            router.push({
+                pathname: '/(auth)/reset-password',
+                params: {
+                    email: formState.email,
+                },
+            });
         } catch (err: any) {
-            const errorMessage = err?.message || 'Failed to send reset code. Please try again.';
+            const errorMessage =
+                err?.errors?.[0]?.message ||
+                'Failed to send reset code. Please try again.';
+
             setFormState((prev) => ({
                 ...prev,
                 serverError: errorMessage,
+            }));
+        } finally {
+            setFormState((prev) => ({
+                ...prev,
                 isLoading: false,
             }));
         }

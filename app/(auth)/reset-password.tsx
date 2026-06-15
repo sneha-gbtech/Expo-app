@@ -1,6 +1,7 @@
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
 import { validatePassword } from '@/lib/validation';
+import { useSignIn } from '@clerk/clerk-expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { styled } from 'nativewind';
 import React, { useState } from 'react';
@@ -26,6 +27,7 @@ interface ResetPasswordFormState {
 }
 
 export default function ResetPassword() {
+    const { signIn, setActive, isLoaded } = useSignIn();
     const router = useRouter();
     const { email } = useLocalSearchParams<{ email: string }>();
 
@@ -47,20 +49,20 @@ export default function ResetPassword() {
     };
 
     const handleResetPassword = async () => {
+        if (!isLoaded) return;
+
         const errors: Record<string, string> = {};
 
-        // Validate code
         if (!formState.code.trim()) {
-            errors.code = 'Reset code is required';
+            errors.code = 'Verification code is required';
         }
 
-        // Validate password
         const passwordError = validatePassword(formState.password);
+
         if (passwordError) {
             errors.password = passwordError;
         }
 
-        // Validate password match
         if (formState.password !== formState.confirmPassword) {
             errors.confirmPassword = 'Passwords do not match';
         }
@@ -73,26 +75,44 @@ export default function ResetPassword() {
             return;
         }
 
-        setFormState((prev) => ({ ...prev, isLoading: true, serverError: '' }));
+        setFormState((prev) => ({
+            ...prev,
+            isLoading: true,
+            serverError: '',
+        }));
 
         try {
-            // For demo purposes, we'll show a success message
-            // In a real app, you would call Clerk's API to reset the password
-            setFormState((prev) => ({
-                ...prev,
-                successMessage: 'Password reset successfully! Redirecting to sign in...',
-                isLoading: false,
-            }));
+            const result = await signIn.attemptFirstFactor({
+                strategy: 'reset_password_email_code',
+                code: formState.code,
+                password: formState.password,
+            });
 
-            // Redirect to sign in after 2 seconds
-            setTimeout(() => {
-                router.replace('/(auth)/signin');
-            }, 2000);
+            if (result.status === 'complete') {
+                await setActive({
+                    session: result.createdSessionId,
+                });
+
+                router.replace('/(tabs)');
+            } else {
+                setFormState((prev) => ({
+                    ...prev,
+                    serverError:
+                        'Password reset could not be completed. Please try again.',
+                }));
+            }
         } catch (err: any) {
-            const errorMessage = err?.message || 'Failed to reset password. Please try again.';
+            const errorMessage =
+                err?.errors?.[0]?.message ||
+                'Invalid verification code or password reset failed.';
+
             setFormState((prev) => ({
                 ...prev,
                 serverError: errorMessage,
+            }));
+        } finally {
+            setFormState((prev) => ({
+                ...prev,
                 isLoading: false,
             }));
         }
