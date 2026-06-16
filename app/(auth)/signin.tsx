@@ -1,5 +1,6 @@
 import { Button } from '@/components/Button';
 import { InputField } from '@/components/InputField';
+import { PasswordField } from '@/components/PasswordField';
 import { colors } from '@/constants/theme';
 import { validateSignIn } from '@/lib/validation';
 import { useSignIn } from '@clerk/clerk-expo';
@@ -104,7 +105,7 @@ export default function SignIn() {
                 Welcome Back
               </Text>
               <Text className="text-base text-muted-foreground">
-                Sign in to manage your subscriptions
+                Sign in to access your account.
               </Text>
             </View>
 
@@ -129,13 +130,14 @@ export default function SignIn() {
               />
 
               {/* Password Field */}
-              <InputField
+              <PasswordField
                 label="Password"
                 value={formState.password}
                 onChangeText={(text) => updateField('password', text)}
                 placeholder="••••••••"
-                secureTextEntry
+                // secureTextEntry
                 error={formState.errors.password}
+
               />
 
               {/* Forgot Password Link */}
