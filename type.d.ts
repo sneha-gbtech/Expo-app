@@ -31,6 +31,7 @@ declare global {
     interface SubscriptionCardProps extends Omit<Subscription, "id"> {
         expanded: boolean;
         onPress: () => void;
+        onSharePress?: () => void;
         onCancelPress?: () => void;
         isCancelling?: boolean;
     }
@@ -53,3 +54,4 @@ declare global {
 }
 
 export { };
+

@@ -1,10 +1,11 @@
 import { colors } from '@/constants/theme';
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
-import { Stack, useRouter } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import '../global.css';
 
 const tokenCache = {
@@ -36,21 +37,12 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
   const { isLoaded, isSignedIn } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
-    if (!isLoaded) return;
-
-    // Navigate based on auth state
-    if (isSignedIn) {
-      router.replace('/(tabs)');
-    } else {
-      router.replace('/(auth)/signin');
+    if (isLoaded) {
+      SplashScreen.hideAsync();
     }
-
-    // Hide splash screen after navigation
-    SplashScreen.hideAsync();
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded]);
 
   if (!isLoaded) {
     return (
@@ -67,8 +59,15 @@ function RootLayoutNav() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
+      <Stack.Protected guard={!isSignedIn}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+
+      <Stack.Protected guard={isSignedIn}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="subscriptions/[id]" />
+        <Stack.Screen name="Onboarding" />
+      </Stack.Protected>
     </Stack>
   );
 }
@@ -81,8 +80,11 @@ export default function RootLayout() {
   }
 
   return (
-    <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
-      <RootLayoutNav />
-    </ClerkProvider>
+    <GestureHandlerRootView>
+      <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
+        <RootLayoutNav />
+      </ClerkProvider>
+    </GestureHandlerRootView>
+
   );
 }
