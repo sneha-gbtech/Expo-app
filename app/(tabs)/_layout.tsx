@@ -4,24 +4,18 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import clsx from 'clsx';
 import { Tabs } from "expo-router";
 import { View } from 'react-native';
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const tabBar = components.tabBar;
 
 const TabLayout = () => {
-    const insets = useSafeAreaInsets();
     return (
         <Tabs screenOptions={{
             headerShown: false,
             tabBarShowLabel: false,
             tabBarStyle: {
-                position: 'absolute',
-                bottom: Math.max(insets.bottom, tabBar.horizontalInset),
-                borderRadius: tabBar.radius,
-                backgroundColor: colors.primary,
+                backgroundColor: colors.mutedForeground,
                 height: tabBar.height,
-                marginHorizontal: tabBar.horizontalInset,
-                borderTopWidth: 0,
+                width: `${100}%`,
                 elevation: 0,
             },
             tabBarItemStyle: {
@@ -41,7 +35,7 @@ const TabLayout = () => {
                         key={tab.name}
                         name={tab.name}
                         options={{
-                            title: tab.title,
+                    title: tab.title,
                             tabBarIcon: ({ size, focused }) => (
                                 <View className="flex-1 items-center justify-center">
                                     <View className={clsx('rounded-full text-white p-3', focused && 'bg-blue-500 text-white')} >
@@ -54,7 +48,7 @@ const TabLayout = () => {
                 ))
             }
         </Tabs>
-    )
+    );
 }
 
 export default TabLayout 
