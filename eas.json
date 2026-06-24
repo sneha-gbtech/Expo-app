@@ -5,23 +5,23 @@
   },
   "build": {
     "development": {
-      "node": "20.19.4",
+      "node": "22.22.3",
       "developmentClient": true,
       "distribution": "internal"
     },
     "preview": {
-      "node": "20.19.4",
+      "node": "22.22.3",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
-      "node": "20.19.4",
+      "node": "22.22.3",
       "autoIncrement": true
     },
     "development-simulator": {
-      "node": "20.19.4",
+      "node": "22.22.3",
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
