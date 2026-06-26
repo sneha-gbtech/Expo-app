@@ -1,9 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useHeaderHeight } from '@react-navigation/elements';
-import { Audio } from 'expo-av';
+import {
+    RecordingPresets,
+    requestRecordingPermissionsAsync,
+    setAudioModeAsync,
+    useAudioPlayer,
+    useAudioPlayerStatus,
+    useAudioRecorder,
+} from 'expo-audio';
 import { useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, FlatList, Image, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Message {
@@ -14,50 +21,54 @@ interface Message {
 }
 
 const AudioPlayer = ({ uri }: { uri: string }) => {
-    const [sound, setSound] = useState<Audio.Sound | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [duration, setDuration] = useState(0);
-    const [position, setPosition] = useState(0);
+    const player = useAudioPlayer({ uri });
+    const status = useAudioPlayerStatus(player);
 
-    useEffect(() => {
-        const loadSound = async () => {
-            const { sound } = await Audio.Sound.createAsync(
-                { uri },
-                { shouldPlay: false },
-                (status) => {
-                    if (status.isLoaded) {
-                        setIsPlaying(status.isPlaying);
-                        setDuration(status.durationMillis || 0);
-                        setPosition(status.positionMillis || 0);
-                        if (status.didJustFinish) {
-                            sound.setPositionAsync(0); // Reset position on finish
-                        }
-                    }
-                }
-            );
-            setSound(sound);
-        };
-
-        loadSound();
-
-        return () => {
-            sound?.unloadAsync();
-        };
-    }, [uri]);
-
-    const handlePlayPause = async () => {
-        if (!sound) return;
-        isPlaying ? await sound.pauseAsync() : await sound.playAsync();
+    const handlePlayPause = () => {
+        if (status.playing) {
+            player.pause();
+        } else {
+            player.play();
+        }
     };
 
-    const formatTime = (millis: number) => {
-        const minutes = Math.floor(millis / 60000);
-        const seconds = ((millis % 60000) / 1000).toFixed(0);
-        return `${minutes}:${parseInt(seconds) < 10 ? '0' : ''}${seconds}`;
+    const progress =
+        status.duration > 0
+            ? (status.currentTime / status.duration) * 100
+            : 0;
+
+    const formatTime = (seconds: number) => {
+        const minutes = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+
+        return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
     };
 
     return (
-        <View style={styles.audioPlayerContainer}><TouchableOpacity onPress={handlePlayPause}><Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color="white" /></TouchableOpacity><View style={styles.audioProgress}><View style={[styles.audioProgressBar, { width: `${(position / duration) * 100}%` }]} /></View><Text style={styles.audioTime}>{formatTime(position)}</Text></View>
+        <View style={styles.audioPlayerContainer}>
+            <TouchableOpacity onPress={handlePlayPause}>
+                <Ionicons
+                    name={status.playing ? 'pause' : 'play'}
+                    size={24}
+                    color="white"
+                />
+            </TouchableOpacity>
+
+            <View style={styles.audioProgress}>
+                <View
+                    style={[
+                        styles.audioProgressBar,
+                        {
+                            width: `${progress}%`,
+                        },
+                    ]}
+                />
+            </View>
+
+            <Text style={styles.audioTime}>
+                {formatTime(status.currentTime)}
+            </Text>
+        </View>
     );
 };
 
@@ -67,10 +78,11 @@ const ChatScreen = () => {
 
     // Permissions
     const [cameraPermission, requestCameraPermission] = useCameraPermissions();
-    const [micPermission, requestMicPermission] = Audio.usePermissions();
+    const recorder = useAudioRecorder(
+        RecordingPresets.HIGH_QUALITY
+    );
 
-    // Audio Recording State
-    const [recording, setRecording] = useState<Audio.Recording | undefined>();
+    const [isRecording, setIsRecording] = useState(false);
 
     // This hook provides the height of the header, but since we have no header,
     // it can be used with the tab bar height for a more accurate offset.
@@ -91,7 +103,11 @@ const ChatScreen = () => {
     };
 
     const handleCameraPress = async () => {
-        const permission = cameraPermission?.granted ? cameraPermission : await requestCameraPermission();
+        let permission = cameraPermission;
+        if (!permission) {
+            permission = (await requestCameraPermission()) as ImagePicker.CameraPermissionResponse;
+        }
+
         if (!permission.granted) {
             Alert.alert('Permission required', 'You need to grant camera permissions to take a photo.');
             return;
@@ -104,7 +120,7 @@ const ChatScreen = () => {
             quality: 0.5,
         });
 
-        if (!result.canceled) {
+        if (!result.canceled && result.assets) {
             const newMessage: Message = {
                 id: Date.now().toString(),
                 text: result.assets[0].uri,
@@ -116,30 +132,50 @@ const ChatScreen = () => {
     };
 
     const handleAudioPress = async () => {
-        if (recording) {
-            // Stop recording
-            await recording.stopAndUnloadAsync();
-            const uri = recording.getURI();
-            setRecording(undefined);
+        if (isRecording) {
+            await recorder.stop();
+
+            const uri = recorder.uri;
+
+            setIsRecording(false);
+
             if (uri) {
-                const newMessage: Message = { id: Date.now().toString(), text: uri, type: 'audio', user: 'me' };
+                const newMessage: Message = {
+                    id: Date.now().toString(),
+                    text: uri,
+                    type: 'audio',
+                    user: 'me',
+                };
+
                 setMessages(prev => [newMessage, ...prev]);
             }
-        } else {
-            // Start recording
-            const permission = micPermission?.granted ? micPermission : await requestMicPermission();
-            if (!permission.granted) {
-                Alert.alert('Permission required', 'You need to grant microphone permissions to record audio.');
-                return;
-            }
 
-            try {
-                await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-                const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-                setRecording(recording);
-            } catch (err) {
-                console.error('Failed to start recording', err);
-            }
+            return;
+        }
+
+        const permission =
+            await requestRecordingPermissionsAsync();
+
+        if (!permission.granted) {
+            Alert.alert(
+                'Permission required',
+                'You need to grant microphone permissions to record audio.'
+            );
+            return;
+        }
+
+        try {
+            await setAudioModeAsync({
+                allowsRecording: true,
+                playsInSilentMode: true,
+            });
+
+            await recorder.prepareToRecordAsync();
+            recorder.record();
+
+            setIsRecording(true);
+        } catch (error) {
+            console.error('Failed to start recording', error);
         }
     };
 
@@ -169,7 +205,11 @@ const ChatScreen = () => {
                     <Ionicons name="camera-outline" size={24} color="#555" />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleAudioPress} style={styles.iconButton}>
-                    <Ionicons name={recording ? "stop-circle" : "mic-outline"} size={24} color={recording ? "red" : "#555"} />
+                    <Ionicons
+                        name={isRecording ? "stop-circle" : "mic-outline"}
+                        size={24}
+                        color={isRecording ? "red" : "#555"}
+                    />
                 </TouchableOpacity>
                 <TextInput
                     style={styles.input}

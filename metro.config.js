@@ -1,7 +1,14 @@
 const { getDefaultConfig } = require("expo/metro-config");
-const { withNativewind } = require("nativewind/metro");
+const { withNativeWind } = require("nativewind/metro");
 
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname, {
+    // [Web-only]: Enables CSS support in Metro.
+    isCSSEnabled: true,
+});
 
-module.exports = withNativewind(config);
+// Add .fx file extension to the list of source extensions.
+// This is needed for expo-notifications to work correctly with the Metro bundler.
+config.resolver.sourceExts.push('fx');
+
+module.exports = withNativeWind(config);

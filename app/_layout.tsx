@@ -59,15 +59,15 @@ function RootLayoutNav() {
         contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Protected guard={!isSignedIn}>
+      {/* <Stack.Protected guard={!isSignedIn}>
         <Stack.Screen name="(auth)" />
-      </Stack.Protected>
+      </Stack.Protected> */}
 
-      <Stack.Protected guard={isSignedIn}>
+      {/* <Stack.Protected guard={false}> */}
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="subscriptions/[id]" />
         <Stack.Screen name="Onboarding" />
-      </Stack.Protected>
+      {/* </Stack.Protected> */}
     </Stack>
   );
 }

@@ -23,7 +23,10 @@ module.exports = ({ config }: { config: ExpoConfig }) => ({
     },
     "edgeToEdgeEnabled": true,
     "predictiveBackGestureEnabled": false,
-    "package": "com.sneha.expoapp"
+    "package": "com.sneha.expoapp",
+    "permissions": [
+      "android.permission.POST_NOTIFICATIONS"
+    ]
   },
   "web": {
     "output": "static",
@@ -32,6 +35,7 @@ module.exports = ({ config }: { config: ExpoConfig }) => ({
   },
   "plugins": [
     "expo-camera",
+    "expo-asset",
     "./plugins/withPlugin",
     "expo-router",
     [
